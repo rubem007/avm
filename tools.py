@@ -3,6 +3,19 @@ from datetime import datetime
 import zoneinfo  # Biblioteca nativa do Python para fusos horários
 
 @tool
+def sum(a: float, b: float) -> float:
+    """Sum a + b and returns the result
+    
+    Args:
+        a: float 
+        b: float 
+        
+    Returns:
+        the resulting float of the equation a + b
+    """
+    return a + b
+
+@tool
 def multiply(a: float, b: float) -> float:
     """Multiply a * b and returns the result
     
@@ -14,6 +27,7 @@ def multiply(a: float, b: float) -> float:
         the resulting float of the equation a * b
     """
     return a * b
+
 
 @tool
 def get_current_time(timezone: str = "Africa/Luanda") -> str:
