@@ -1,18 +1,51 @@
 import threading
 from langgraph.graph.state import RunnableConfig
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from graph import build_graph
 from rich import print
+from rich.console import Console
+
+console = Console()
 
 def main() -> None:
     graph = build_graph()
-    config = RunnableConfig(configurable={"thread_id": threading.get_ident()})
-    user_input = "Olá, sou o Rubem"
-    human_message = HumanMessage(content=user_input)
-    result = graph.invoke({"messages": [human_message]}, config=config)
+    print(graph.get_graph().draw_mermaid())
     
-    print(result)
+    # config = RunnableConfig(configurable={"thread_id": threading.get_ident()})
+    # initial_state = {
+    #     "messages": [],
+    #     "voz_ativa": False,
+    #     "gesto_ativo": False,
+    #     "camera_ativa": False,
+    # }
 
-    
+    # graph.invoke(initial_state, config=config)
+
+    # console.print("[bold green]AVM iniciado. Escreve 'sair' para terminar.[/bold green]")
+
+    # while True:
+    #     try:
+    #         user_input = input("\nTu: ").strip()
+    #     except (EOFError, KeyboardInterrupt):
+    #         console.print("\n[yellow]A sair...[/yellow]")
+    #         break
+
+    #     if user_input.lower() in {"sair", "exit", "quit"}:
+    #         console.print("[yellow]A sair...[/yellow]")
+    #         break
+
+    #     if not user_input:
+    #         continue
+
+    #     result = graph.invoke(
+    #         {"messages": [HumanMessage(content=user_input)]},
+    #         config=config,
+    #     )
+
+    #     last = result["messages"][-1]
+    #     if isinstance(last, AIMessage) and last.content:
+    #         console.print(f"\n[bold cyan]AVM:[/bold cyan] {last.content}")
+
+
 if __name__ == "__main__":
     main()
