@@ -77,7 +77,7 @@ def desativar_camera(state: Annotated[dict, InjectedState]) -> Command:
     return Command(update={"camera_ativa": False})
 
 TOOLS: list[BaseTool] = [
-    multiply, get_current_time,
+    sum, multiply, get_current_time,
     ativar_voz, desativar_voz,
     ativar_gesto, desativar_gesto,
     ativar_camera, desativar_camera,
