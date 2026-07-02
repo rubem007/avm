@@ -4,4 +4,4 @@ uv.lock
 __pycache__/
 node_modules
 package-lock.json
-CLUADE.md
+/CLAUDE.md
