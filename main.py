@@ -14,9 +14,9 @@ async def conversation() -> None:
 
     initial_state = {
         "messages": [],
-        "voz_ativa": False,
-        "gesto_ativo": False,
-        "camera_ativa": False,
+        "voice_active": False,
+        "gesture_active": False,
+        "camera_active": False,
     }
     await graph.aupdate_state(config, initial_state)
 
@@ -24,23 +24,23 @@ async def conversation() -> None:
 
     while True:
         try:
-            pergunta = await asyncio.to_thread(input, "Tu: ")
+            question = await asyncio.to_thread(input, "Tu: ")
         except (EOFError, KeyboardInterrupt):
             console.print("\n[bold red]A sair...[/bold red]")
             break
 
-        pergunta_limpa = pergunta.strip()
-        if not pergunta_limpa:
+        clean_question = question.strip()
+        if not clean_question:
             continue
 
-        match pergunta_limpa.lower():
+        match clean_question.lower():
             case "sair" | "exit" | "quit":
                 console.print("[bold yellow]Até mais![/bold yellow]")
                 break
             case "historico":
-                estado_atual = await graph.aget_state(config)
+                current_state = await graph.aget_state(config)
                 console.print("\n[bold blue]=== Histórico da Conversa ===[/bold blue]")
-                for msg in estado_atual.values.get("messages", []):
+                for msg in current_state.values.get("messages", []):
                     console.print(f"[bold]{type(msg).__name__}:[/bold] {msg.content}")
                 console.print("[bold blue]=============================[/bold blue]\n")
                 continue
@@ -49,7 +49,7 @@ async def conversation() -> None:
 
         try:
             async for event in graph.astream_events(
-                {"messages": [HumanMessage(content=pergunta_limpa)]},
+                {"messages": [HumanMessage(content=clean_question)]},
                 config=config,
                 version="v2",
             ):

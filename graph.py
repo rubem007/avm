@@ -1,5 +1,8 @@
 from langgraph.graph.state import CompiledStateGraph
-from typing import Literal
+from langgraph.types import Command
+from langgraph.prebuilt import InjectedState
+from langchain_core.tools import BaseTool
+from typing import Literal, get_type_hints
 from langgraph.graph import START, END, StateGraph, add_messages
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import AIMessage, ToolMessage, SystemMessage
@@ -10,6 +13,19 @@ from rich import print
 from state import AgentState
 from utils import load_llm
 from mcp_client import get_all_tools
+from tts import speak
+
+def _injected_state_params(tool: BaseTool) -> list[str]:
+    """Descobre parâmetros da tool anotados com InjectedState, para injeção manual."""
+    func = getattr(tool, "coroutine", None) or getattr(tool, "func", None)
+    if not func:
+        return []
+    hints = get_type_hints(func, include_extras=True)
+    return [
+        name
+        for name, hint in hints.items()
+        if any(isinstance(m, InjectedState) or m is InjectedState for m in getattr(hint, "__metadata__", ()))
+    ]
 
 TARGET_DIRECTORY = "C:/Users/ruben.nascimento/Documents/curso"
 
@@ -39,8 +55,18 @@ def make_tool_node(tools_by_name: dict):
         call = llm_response.tool_calls[-1]
         name, args, id_ = call["name"], call["args"], call["id"]
 
+        state_updates: dict = {}
         try:
-            content = await tools_by_name[name].ainvoke(args)
+            tool_obj = tools_by_name[name]
+            call_args = dict(args)
+            for param_name in _injected_state_params(tool_obj):
+                call_args[param_name] = state
+            result = await tool_obj.ainvoke(call_args)
+            if isinstance(result, Command):
+                state_updates = result.update or {}
+                content = f"OK: {list(state_updates.keys())}"
+            else:
+                content = str(result)
             status = "success"
         except (KeyError, IndexError, TypeError, ValidationError, ValueError) as error:
             content = f"Please, fix your mistake: {error}"
@@ -48,15 +74,28 @@ def make_tool_node(tools_by_name: dict):
 
         tool_message = ToolMessage(content=content, tool_call_id=id_, status=status)
 
-        return {"messages": [tool_message]}
+        return {"messages": [tool_message], **state_updates}
 
     return tool_node
 
-def router(state: AgentState) -> Literal["tool_node", "__end__"]:
+async def speak_response(state: AgentState) -> AgentState:
+    if not state.get("voice_active"):
+        return state
+
+    last = state["messages"][-1]
+    text = last.content if isinstance(last, AIMessage) else ""
+    if text:
+        await speak(text)
+
+    return state
+
+def router(state: AgentState) -> Literal["tool_node", "speak_response", "__end__"]:
     llm_response = state["messages"][-1]
 
     if getattr(llm_response, "tool_calls", None):
         return "tool_node"
+    if state.get("voice_active"):
+        return "speak_response"
     return "__end__"
 
 
@@ -68,9 +107,11 @@ async def build_graph() -> CompiledStateGraph[AgentState, None, AgentState, Agen
 
     builder.add_node("call_llm", make_call_llm(all_tools))
     builder.add_node("tool_node", make_tool_node(tools_by_name))
+    builder.add_node("speak_response", speak_response)
 
     builder.add_edge(START, "call_llm")
-    builder.add_conditional_edges("call_llm", router, ["tool_node", "__end__"])
+    builder.add_conditional_edges("call_llm", router, ["tool_node", "speak_response", "__end__"])
     builder.add_edge("tool_node", "call_llm")
+    builder.add_edge("speak_response", END)
 
     return builder.compile(checkpointer=InMemorySaver())

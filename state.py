@@ -4,6 +4,6 @@ from langgraph.graph import add_messages
 
 class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
-    voz_ativa: bool
-    gesto_ativo: bool
-    camera_ativa: bool
+    voice_active: bool
+    gesture_active: bool
+    camera_active: bool
